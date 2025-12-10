@@ -54,8 +54,11 @@ function createProductCard(product) {
     const savings = product.marketPrice - product.price;
     const savingsPercent = ((savings / product.marketPrice) * 100).toFixed(0);
     
+    // Use the ID that exists (either id or _id)
+    const productId = product.id || product._id;
+    
     card.innerHTML = `
-        <div class="product-image" onclick="viewProduct(${product.id})" style="cursor: pointer;">
+        <div class="product-image" onclick="viewProduct('${productId}')" style="cursor: pointer;">
             <img src="${product.image}" alt="${product.name}" onerror="this.src='https://via.placeholder.com/300x420?text=No+Image'">
             ${savings > 0 ? `<div class="savings-badge">Save ${savingsPercent}%</div>` : ''}
         </div>
@@ -76,7 +79,7 @@ function createProductCard(product) {
                 <span>${stockText}</span>
             </div>
             <div class="card-actions">
-                <button class="btn-add-cart" onclick="quickAddToCart(${product.id})" ${product.stock === 0 ? 'disabled' : ''}>
+                <button class="btn-add-cart" onclick="quickAddToCart('${productId}')" ${product.stock === 0 ? 'disabled' : ''}>
                     Add to Cart
                 </button>
             </div>
@@ -88,7 +91,8 @@ function createProductCard(product) {
 
 // View product details in modal
 function viewProduct(productId) {
-    const product = dataManager.getProductById(productId);
+    // Ensure productId is treated as string for consistency
+    const product = dataManager.getProductById(String(productId));
     if (!product) return;
     
     const modal = document.getElementById('product-modal');
@@ -142,7 +146,8 @@ function viewProduct(productId) {
 
 // Quick add to cart from product card
 function quickAddToCart(productId) {
-    const result = dataManager.addToCart(productId, 1);
+    // Ensure productId is treated as string for consistency
+    const result = dataManager.addToCart(String(productId), 1);
     
     if (result.success) {
         showToast('Added to cart!', 'success');
@@ -156,7 +161,7 @@ function quickAddToCart(productId) {
 // Add to cart from modal
 function addToCartFromModal() {
     const modal = document.getElementById('product-modal');
-    const productId = parseInt(modal.dataset.productId);
+    const productId = String(modal.dataset.productId);
     const quantity = parseInt(document.getElementById('modal-quantity').value);
     
     const result = dataManager.addToCart(productId, quantity);
