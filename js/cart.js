@@ -1,7 +1,10 @@
 // Cart functionality for Pokemon Cards Store
 // Handles cart display, quantity updates, and checkout
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Wait for products to load from backend
+    await dataManager.refreshProducts();
+    
     loadCart();
     updateCartCount();
 });
