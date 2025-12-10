@@ -10,7 +10,7 @@ const RAZORPAY_CONFIG = {
     
     // Live Mode Credentials (Replace with your actual keys)
     live: {
-        keyId: 'rzp_live_Rn3w5m3jxnc59J',
+        keyId: 'rzp_live_RpBqrZsjwpLlUn',
         keySecret: 'xhdWHJFYq0P4LYVE9PA6WvPu' 
     },
     
@@ -44,5 +44,6 @@ function getRazorpayKeyId() {
 // 2. Replace 'YOUR_LIVE_KEY_ID' with your actual live key
 // 3. Change mode from 'test' to 'live'
 // 4. Save this file
+
 
 
