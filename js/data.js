@@ -154,11 +154,11 @@ class DataManager {
     }
 
     getProductById(id) {
+        // Convert id to string for consistent comparison
+        const searchId = String(id);
         return this.products.find(p => 
-            p.id === id || 
-            p.id === parseInt(id) || 
-            p._id === id || 
-            p._id === parseInt(id)
+            String(p.id) === searchId || 
+            String(p._id) === searchId
         );
     }
 
@@ -211,11 +211,21 @@ class DataManager {
         const cart = this.getCart();
         const product = this.getProductById(productId);
         
-        if (!product || product.stock < quantity) {
+        if (!product) {
+            return { success: false, message: 'Product not found' };
+        }
+        
+        if (product.stock < quantity) {
             return { success: false, message: 'Insufficient stock' };
         }
 
-        const existingItem = cart.find(item => item.productId === productId);
+        // Convert productId to string for consistent storage
+        const productIdStr = String(productId);
+
+        // Find existing item - compare as strings
+        const existingItem = cart.find(item => 
+            String(item.productId) === productIdStr
+        );
         
         if (existingItem) {
             const newQuantity = existingItem.quantity + quantity;
@@ -224,7 +234,7 @@ class DataManager {
             }
             existingItem.quantity = newQuantity;
         } else {
-            cart.push({ productId, quantity });
+            cart.push({ productId: productIdStr, quantity });
         }
 
         this.saveCart(cart);
@@ -233,7 +243,10 @@ class DataManager {
 
     removeFromCart(productId) {
         let cart = this.getCart();
-        cart = cart.filter(item => item.productId !== productId);
+        const productIdStr = String(productId);
+        cart = cart.filter(item => 
+            String(item.productId) !== productIdStr
+        );
         this.saveCart(cart);
     }
 
@@ -241,11 +254,20 @@ class DataManager {
         const cart = this.getCart();
         const product = this.getProductById(productId);
         
-        if (!product || quantity > product.stock) {
+        if (!product) {
+            return { success: false, message: 'Product not found' };
+        }
+        
+        if (quantity > product.stock) {
             return { success: false, message: 'Insufficient stock' };
         }
 
-        const item = cart.find(item => item.productId === productId);
+        // Find item - compare as strings
+        const productIdStr = String(productId);
+        const item = cart.find(item => 
+            String(item.productId) === productIdStr
+        );
+        
         if (item) {
             if (quantity <= 0) {
                 this.removeFromCart(productId);
