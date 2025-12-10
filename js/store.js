@@ -5,7 +5,10 @@ let allProducts = [];
 let filteredProducts = [];
 
 // Initialize store on page load
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Wait for dataManager to finish loading products from backend
+    await dataManager.refreshProducts();
+    
     loadProducts();
     updateCartCount();
     setupEventListeners();
