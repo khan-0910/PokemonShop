@@ -7,7 +7,10 @@ const deliveryCharges = {
     premium: 200
 };
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    // Wait for products to load from backend
+    await dataManager.refreshProducts();
+    
     // Check if cart is empty
     const cart = dataManager.getCart();
     if (cart.length === 0) {
