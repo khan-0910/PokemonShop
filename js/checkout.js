@@ -135,18 +135,61 @@ function placeOrder() {
 }
 
 // Initialize Razorpay Payment
-function initializeRazorpayPayment(customerInfo, amountInPaise, totalAmount) {
-    const options = {
-        key: getRazorpayKeyId(),
-        amount: amountInPaise, // Amount in paise
-        currency: RAZORPAY_CONFIG.currency,
-        name: RAZORPAY_CONFIG.storeName,
-        description: RAZORPAY_CONFIG.storeDescription,
-        image: RAZORPAY_CONFIG.storeLogo,
-        handler: function (response) {
-            // Payment successful
-            handlePaymentSuccess(response, customerInfo, totalAmount);
-        },
+async function initializeRazorpayPayment(customerInfo, amountInPaise, totalAmount) {
+    try {
+        // First, create order on backend
+        const cart = dataManager.getCart();
+        const items = cart.map(item => {
+            const product = dataManager.getProductById(item.productId);
+            return {
+                productId: item.productId,
+                name: product.name,
+                price: product.price,
+                quantity: item.quantity
+            };
+        });
+        
+        const subtotal = dataManager.getCartTotal();
+        const tax = subtotal * 0.18;
+        
+        const orderData = {
+            amount: totalAmount,
+            currency: RAZORPAY_CONFIG.currency,
+            customerInfo: {
+                ...customerInfo,
+                tax: tax
+            },
+            items: items
+        };
+        
+        // Create order on backend
+        const createOrderResponse = await fetch(getApiUrl(API_CONFIG.endpoints.createOrder), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderData)
+        });
+        
+        const orderResult = await createOrderResponse.json();
+        
+        if (!orderResult.success) {
+            throw new Error(orderResult.error || 'Failed to create order');
+        }
+        
+        // Now initialize Razorpay with the order ID from backend
+        const options = {
+            key: getRazorpayKeyId(),
+            amount: amountInPaise, // Amount in paise
+            currency: RAZORPAY_CONFIG.currency,
+            name: RAZORPAY_CONFIG.storeName,
+            description: RAZORPAY_CONFIG.storeDescription,
+            image: RAZORPAY_CONFIG.storeLogo,
+            order_id: orderResult.razorpayOrder.id, // Order ID from backend
+            handler: function (response) {
+                // Payment successful - verify with backend
+                handlePaymentSuccess(response, customerInfo, totalAmount, orderResult.orderId);
+            },
         prefill: {
             name: customerInfo.name,
             email: customerInfo.email,
@@ -195,35 +238,53 @@ function initializeRazorpayPayment(customerInfo, amountInPaise, totalAmount) {
         }
     };
     
-    const razorpay = new Razorpay(options);
-    
-    razorpay.on('payment.failed', function (response) {
-        handlePaymentFailure(response);
-    });
-    
-    razorpay.open();
+        const razorpay = new Razorpay(options);
+        
+        razorpay.on('payment.failed', function (response) {
+            handlePaymentFailure(response);
+        });
+        
+        razorpay.open();
+    } catch (error) {
+        console.error('Error initializing payment:', error);
+        showToast('Failed to initialize payment: ' + error.message, 'error');
+    }
 }
 
 // Handle successful payment
-function handlePaymentSuccess(response, customerInfo, totalAmount) {
-    // Add payment details to customer info
-    customerInfo.date = new Date().toISOString();
-    customerInfo.paymentId = response.razorpay_payment_id;
-    customerInfo.paymentMethod = 'Razorpay';
-    customerInfo.totalAmount = totalAmount;
-    
-    const result = dataManager.createOrder(customerInfo);
-    
-    if (result.success) {
-        showToast('Payment successful! Order placed.', 'success');
+async function handlePaymentSuccess(response, customerInfo, totalAmount, orderId) {
+    try {
+        // Verify payment with backend
+        const verifyData = {
+            razorpay_order_id: response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature: response.razorpay_signature,
+            orderId: orderId
+        };
         
-        // Show success message
-        setTimeout(() => {
-            const deliveryType = customerInfo.deliveryType === 'regular' ? 'Regular (5-7 days)' : 'Premium (2-3 days)';
-            const successMessage = `
+        const verifyResponse = await fetch(getApiUrl(API_CONFIG.endpoints.verifyPayment), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(verifyData)
+        });
+        
+        const verifyResult = await verifyResponse.json();
+        
+        if (verifyResult.success) {
+            showToast('Payment successful! Order placed.', 'success');
+            
+            // Clear cart
+            dataManager.clearCart();
+            
+            // Show success message
+            setTimeout(() => {
+                const deliveryType = customerInfo.deliveryType === 'regular' ? 'Regular (5-7 days)' : 'Premium (2-3 days)';
+                const successMessage = `
 🎉 Payment Successful!
 
-Order ID: #${result.order.id}
+Order ID: ${orderId}
 Payment ID: ${response.razorpay_payment_id}
 Amount Paid: ₹${totalAmount.toFixed(2)}
 
@@ -236,15 +297,20 @@ ${customerInfo.address.line2 ? customerInfo.address.line2 + '\n' : ''}${customer
 
 Thank you, ${customerInfo.name}!
 Your Pokemon cards will be shipped soon.
-            `;
-            
-            alert(successMessage);
-            
-            // Redirect to store
-            window.location.href = 'index.html';
-        }, 1000);
-    } else {
-        showToast('Order creation failed: ' + result.message, 'error');
+                `;
+                
+                alert(successMessage);
+                
+                // Redirect to store
+                window.location.href = 'index.html';
+            }, 1000);
+        } else {
+            throw new Error(verifyResult.message || 'Payment verification failed');
+        }
+    } catch (error) {
+        console.error('Payment verification error:', error);
+        showToast('Payment verification failed: ' + error.message, 'error');
+        alert('Payment was successful but verification failed. Please contact support with Payment ID: ' + response.razorpay_payment_id);
     }
 }
 
