@@ -189,7 +189,12 @@ class DataManager {
 
     updateStock(id, quantity) {
         const products = this.getProducts();
-        const product = products.find(p => p.id === parseInt(id));
+        // Convert id to string for consistent comparison
+        const searchId = String(id);
+        const product = products.find(p => 
+            String(p.id) === searchId || 
+            String(p._id) === searchId
+        );
         if (product) {
             product.stock -= quantity;
             this.saveProducts(products);
