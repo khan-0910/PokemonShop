@@ -37,6 +37,8 @@ function loadCart() {
         const stockWarning = item.quantity > product.stock ? 
             `<p class="stock-warning">⚠️ Only ${product.stock} available in stock</p>` : '';
         
+        const productId = product.id || product._id;
+        
         cartHTML += `
             <div class="cart-item">
                 <div class="cart-item-image">
@@ -47,15 +49,15 @@ function loadCart() {
                     <p>${product.description}</p>
                     <div class="cart-item-price">₹${product.price.toFixed(2)} each</div>
                     <div class="quantity-controls">
-                        <button onclick="updateQuantity(${product.id}, ${item.quantity - 1})">-</button>
+                        <button onclick="updateQuantity('${productId}', ${item.quantity - 1})">-</button>
                         <span>${item.quantity}</span>
-                        <button onclick="updateQuantity(${product.id}, ${item.quantity + 1})" ${item.quantity >= product.stock ? 'disabled' : ''}>+</button>
+                        <button onclick="updateQuantity('${productId}', ${item.quantity + 1})" ${item.quantity >= product.stock ? 'disabled' : ''}>+</button>
                     </div>
                     ${stockWarning}
                 </div>
                 <div class="cart-item-actions">
                     <div class="item-subtotal">₹${subtotal.toFixed(2)}</div>
-                    <button class="btn-remove" onclick="removeFromCart(${product.id})">Remove</button>
+                    <button class="btn-remove" onclick="removeFromCart('${productId}')">Remove</button>
                 </div>
             </div>
         `;
@@ -95,6 +97,9 @@ function loadCart() {
 
 // Update item quantity
 function updateQuantity(productId, newQuantity) {
+    // Ensure productId is treated as string
+    productId = String(productId);
+    
     if (newQuantity < 1) {
         if (confirm('Remove this item from cart?')) {
             removeFromCart(productId);
@@ -114,6 +119,9 @@ function updateQuantity(productId, newQuantity) {
 
 // Remove item from cart
 function removeFromCart(productId) {
+    // Ensure productId is treated as string
+    productId = String(productId);
+    
     dataManager.removeFromCart(productId);
     showToast('Item removed from cart', 'success');
     loadCart();
